@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" monitorInterval="30">
+    <Properties>
+        <Property name="SERVICE_NAME">history-api-service</Property>
+        <Property name="LOG_DIR">.</Property>
+
+        <Property name="CONSOLE_PATTERN">
+            %style{%d{ISO8601}}{red} %highlight{%-5level[${SERVICE_NAME},%X{traceId},%X{spanId}]} [%style{%t}{bright,blue}] %style{%logger{36}}{bright,yellow}: %msg%n%throwable
+        </Property>
+
+        <Property name="FILE_PATTERN">
+            %d{ISO8601} %-5level[${SERVICE_NAME},%X{traceId},%X{spanId}] [%t] %logger{36}: %msg%n%throwable
+        </Property>
+    </Properties>
+
+    <CustomLevels>
+        <CustomLevel name="EVENT" intLevel="450"/>
+    </CustomLevels>
+
+    <Appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout pattern="${CONSOLE_PATTERN}"/>
+        </Console>
+
+        <RollingFile
+          name="RollingFile"
+          fileName="${LOG_DIR}/application.log"
+          filePattern="${LOG_DIR}/$${date:yyyy-MM}/application-%d{yyyy-MM-dd}.log.%i.gz">
+            <PatternLayout pattern="${FILE_PATTERN}"/>
+            <Policies>
+                <TimeBasedTriggeringPolicy/>
+                <SizeBasedTriggeringPolicy size="100MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="30">
+                <Delete basePath="${LOG_DIR}" maxDepth="2">
+                    <IfFileName glob="*/application-*.log.*.gz"/>
+                    <IfLastModified age="15d"/>
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingFile>
+    </Appenders>
+
+    <Loggers>
+        <Logger name="com.candle.aggregator" level="INFO" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
+        </Logger>
+
+        <Logger name="org.zalando.logbook" level="TRACE"/>
+        <Logger name="org.apache.kafka" level="WARN"/>
+        <Logger name="org.springframework.kafka" level="INFO"/>
+
+        <Root level="INFO">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
+        </Root>
+    </Loggers>
+</Configuration>

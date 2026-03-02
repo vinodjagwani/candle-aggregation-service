@@ -1,0 +1,71 @@
+spring:
+  application:
+    name: history-api-service
+  threads:
+    virtual:
+      enabled: true
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+  datasource:
+    url: jdbc:postgresql://localhost:8812/qdb
+    username: admin
+    password: quest
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 16
+
+  sql:
+    init:
+      mode: never
+
+server:
+  port: 8082
+
+management:
+  server:
+    port: 9082
+  security:
+    enabled: false
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+    health:
+      show-details: always
+      probes:
+        enabled: true
+        liveness:
+          include: livenessState,db
+
+app:
+  candles:
+    table: candles
+    max-points: 50000
+    intervals:
+      - code: 1s
+        seconds: 1
+      - code: 5s
+        seconds: 5
+      - code: 1m
+        seconds: 60
+      - code: 15m
+        seconds: 900
+      - code: 1h
+        seconds: 3600
+
+
+logbook:
+  exclude:
+    - /swagger-ui.html
+    - /actuator/health
+    - /admin/**
+  format.style: http
+  filter.enabled: true
+
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
