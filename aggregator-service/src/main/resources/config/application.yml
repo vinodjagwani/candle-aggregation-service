@@ -1,0 +1,112 @@
+spring:
+  application:
+    name: aggregator-service
+  threads:
+    virtual:
+      enabled: true
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: candle-agg-v1
+      enable-auto-commit: false
+      auto-offset-reset: latest
+      max-poll-records: 2000
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      properties:
+        max.poll.interval.ms: 300000
+        session.timeout.ms: 45000
+        heartbeat.interval.ms: 15000
+
+    listener:
+      ack-mode: MANUAL
+      type: BATCH
+
+    producer:
+      acks: all
+      properties:
+        linger.ms: 5
+        batch.size: 65536
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+  otlp:
+    metrics:
+      export:
+        url: http://localhost:4318/v1/metrics
+    opentelemetry:
+      tracing:
+        export:
+          otlp:
+            endpoint: http://localhost:4318/v1/traces
+      logging:
+        export:
+          otlp:
+            endpoint: http://localhost:4318/v1/logs
+
+  management:
+    tracing:
+      sampling:
+        probability: 1.0
+
+server:
+  shutdown: graceful
+
+management:
+  server:
+    port: 9081
+  security:
+    enabled: false
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+    health:
+      show-details: always
+      probes:
+        enabled: true
+        liveness:
+          include: livenessState,db
+  tracing:
+    sampling:
+      probability: 1.0
+
+app:
+  kafka:
+    ticks-topic: ticks.v1
+    candles-topic: candles.v1
+    dlq-topic: ticks.dlq.v1
+    concurrency: 4
+
+  candle:
+    allowed-lateness-sec: 2
+    intervals:
+      - code: 1s
+        seconds: 1
+      - code: 5s
+        seconds: 5
+      - code: 1m
+        seconds: 60
+      - code: 15m
+        seconds: 900
+      - code: 1h
+        seconds: 3600
+
+  flush:
+    rows: 10000
+    every: 100ms
+
+  questdb:
+    ilp-config: "http::addr=localhost:9000;auto_flush_rows=10000;retry_timeout=10000;"
+    table: "candles"
+
+  simulator:
+    enabled: true
+    symbols: [BTC-USD, ETH-USD, SOL-USD]
+    ticks-per-second: 500
+    base-price: 30000
+    volatility: 1.0
+    spread: 0.6
