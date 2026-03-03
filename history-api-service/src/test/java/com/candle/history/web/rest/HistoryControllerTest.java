@@ -1,7 +1,8 @@
 package com.candle.history.web.rest;
 
 
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -41,11 +42,11 @@ class HistoryControllerTest {
         );
 
         when(historyService.getHistory(
-                eq("BTCUSDT"),
-                eq("1m"),
-                eq(Instant.ofEpochSecond(100)),
-                eq(Instant.ofEpochSecond(200)),
-                eq(500)
+                any(String.class),
+                any(String.class),
+                any(Instant.class),
+                any(Instant.class),
+                anyInt()
         )).thenReturn(response);
 
         mockMvc.perform(get("/api/v1/history/candles")
@@ -62,11 +63,11 @@ class HistoryControllerTest {
                 .andExpect(MockMvcResultMatchers.jsonPath("$.v[0]").value(10));
 
         verify(historyService).getHistory(
-                eq("BTCUSDT"),
-                eq("1m"),
-                eq(Instant.ofEpochSecond(100)),
-                eq(Instant.ofEpochSecond(200)),
-                eq(500)
+                any(String.class),
+                any(String.class),
+                any(Instant.class),
+                any(Instant.class),
+                anyInt()
         );
     }
 

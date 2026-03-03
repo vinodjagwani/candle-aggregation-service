@@ -2,11 +2,11 @@
 
 A high-performance backend system that:
 
--   Consumes real-time bid/ask tick data
--   Aggregates ticks into OHLC candlesticks
--   Stores historical candle data efficiently
--   Publishes aggregated candles
--   Exposes history APIs for frontend charting systems
+- Consumes real-time bid/ask tick data
+- Aggregates ticks into OHLC candlesticks
+- Stores historical candle data efficiently
+- Publishes aggregated candles
+- Exposes history APIs for frontend charting systems
 
 Designed for trading dashboards, TradingView Lightweight Charts, quant
 platforms, and real-time analytics systems.
@@ -26,12 +26,12 @@ Frontend
 
 Responsible for:
 
--   Consuming tick stream from Kafka
--   Aggregating into OHLC candles
--   Handling multiple symbols and intervals
--   Writing to QuestDB
--   Publishing finalized candles to Kafka
--   Exposing metrics via Actuator + OpenTelemetry
+- Consuming tick stream from Kafka
+- Aggregating into OHLC candles
+- Handling multiple symbols and intervals
+- Writing to QuestDB
+- Publishing finalized candles to Kafka
+- Exposing metrics via Actuator + OpenTelemetry
 
 Stateless processing logic with partition-based sharding.
 
@@ -51,11 +51,11 @@ Separation ensures ingestion and read workloads scale independently.
 
 ## Why Kafka?
 
--   High-throughput streaming backbone
--   Partition-based horizontal scaling
--   Ordering guarantees per symbol
--   Consumer group parallelism
--   Durable log storage
+- High-throughput streaming backbone
+- Partition-based horizontal scaling
+- Ordering guarantees per symbol
+- Consumer group parallelism
+- Durable log storage
 
 Partition key = symbol\
 Ensures in-order processing without locks.
@@ -64,11 +64,11 @@ Ensures in-order processing without locks.
 
 ## Why QuestDB?
 
--   Optimized for time-series data
--   Extremely fast ingestion
--   Efficient range queries
--   Lightweight deployment
--   SQL support
+- Optimized for time-series data
+- Extremely fast ingestion
+- Efficient range queries
+- Lightweight deployment
+- SQL support
 
 Ideal for OHLC historical storage.
 
@@ -86,10 +86,10 @@ ShardState\
 
 Benefits:
 
--   No shared mutable state
--   No locks
--   Linear scalability
--   Thread affinity per partition
+- No shared mutable state
+- No locks
+- Linear scalability
+- Thread affinity per partition
 
 ------------------------------------------------------------------------
 
@@ -107,11 +107,11 @@ Allows handling of out-of-order ticks safely.
 
 Single tick updates multiple intervals:
 
--   1s
--   5s
--   1m
--   15m
--   1h
+- 1s
+- 5s
+- 1m
+- 15m
+- 1h
 
 Efficient bucket management prevents object explosion.
 
@@ -134,31 +134,38 @@ This section explains how the system is structured internally and how responsibi
 ## 📂 Configuration Layer (`config/`)
 
 ### `AppProperties`
+
 - Centralized configuration using `@ConfigurationProperties`
 - Strongly typed immutable records
 - Validated with Jakarta Bean Validation
 - Fails fast on invalid configuration
 
 ### `KafkaConfig`
+
 - Configures Kafka error handling strategy
 - Centralizes retry/backoff configuration
 
 ## 🧠 Domain Layer (`domain/`)
 
 ### `BidAskEvent`
+
 Represents a single tick event:
+
 - symbol
 - bid
 - ask
 - timestampMillis
 
 Helper:
+
 ```java
 double mid()
 ```
 
 ### `Candle`
+
 Immutable OHLCV record:
+
 - timeSec
 - open
 - high
@@ -167,6 +174,7 @@ Immutable OHLCV record:
 - volume
 
 ### `Interval`
+
 Encapsulates bucket alignment logic:
 
 ```java
@@ -178,6 +186,7 @@ Ensures consistent candle boundaries.
 ## ⚙️ Core Aggregation Engine (`core/`)
 
 ### `CandleAggregator`
+
 Sealed interface:
 
 ```java
@@ -185,25 +194,32 @@ List<Finalized> onTick(BidAskEvent event)
 ```
 
 ### `CandleShard`
+
 In-memory aggregation per shard.
 
 Responsibilities:
+
 - Maintain per-symbol buckets
 - Update multiple intervals per tick
 - Perform watermark-based finalization
 - Produce immutable candles
 
 Lock-free behavior is correct only when:
+
 - Each shard is accessed by a single thread
 - Kafka partition key = symbol
 
 ### `RecentBuckets`
+
 Bounded rolling storage:
+
 - Prevents unbounded memory growth
 - Keeps only buckets needed within lateness window
 
 ### `MutableCandle`
+
 Hot-path mutable accumulator:
+
 - open
 - high
 - low
@@ -217,14 +233,17 @@ Candle freeze()
 ```
 
 ### `BatchFlusher`
+
 Flush policy engine:
 
 Flush when:
+
 - `pendingRows >= configuredRows`
-OR
+  OR
 - `elapsedTime >= configuredDuration`
 
 ### `ShardManager`
+
 Creates shards based on:
 
 ```
@@ -232,12 +251,15 @@ app.kafka.concurrency
 ```
 
 Each shard contains:
+
 - CandleShard
 - QuestDbSink
 - Batch state
 
 ### `ShardState`
+
 Encapsulates:
+
 - Aggregator
 - Sink
 - pendingRows
@@ -248,23 +270,28 @@ Keeps batching logic isolated per shard.
 ## 🚚 Ingestion Layer (`ingest/`)
 
 ### `TickSource`
+
 Abstraction for tick ingestion transport.
 
 Allows swapping Kafka with other sources.
 
 ### `KafkaTickSource`
+
 Kafka batch consumer.
 
 Responsibilities:
+
 - Decode JSON → BidAskEvent
 - Send malformed messages to DLQ
 - Manual acknowledgment
 - At-least-once processing
 
 ### `TickProcessor`
+
 Main business orchestrator.
 
 Per tick:
+
 1. Resolve shard
 2. Aggregate
 3. Finalize candles
@@ -273,9 +300,11 @@ Per tick:
 6. Flush if needed
 
 ### `TickDlqPublisher`
+
 Standardized DLQ publishing.
 
 Envelope format:
+
 ```json
 {
   "error": "...",
@@ -286,6 +315,7 @@ Envelope format:
 ## 🗃 Persistence & Publishing (`sink/`)
 
 ### `CandleSink`
+
 Persistence contract:
 
 ```java
@@ -295,6 +325,7 @@ void close()
 ```
 
 ### `QuestDbSink`
+
 - Writes candles using ILP
 - Batched flush
 - Retry-once safety logic
@@ -302,25 +333,30 @@ void close()
 - Metrics instrumentation
 
 ### `KafkaCandlePublisher`
+
 Publishes finalized candles to Kafka topic.
 
 ## 📊 Observability (`observation/`)
 
 ### `AggMetrics`
+
 Centralized metrics collection.
 
 Counters:
+
 - ticks processed
 - decode failures
 - DLQ publishes
 - candles finalized per interval
 
 Timers:
+
 - tick processing latency
 - QuestDB write time
 - QuestDB flush time
 
 Exported via:
+
 - Micrometer
 - OpenTelemetry
 - Prometheus
@@ -340,10 +376,10 @@ http://localhost:9081/actuator
 
 Available endpoints:
 
--   /actuator/health
--   /actuator/metrics
--   /actuator/info
--   /actuator/beans
+- /actuator/health
+- /actuator/metrics
+- /actuator/info
+- /actuator/beans
 
 ### Check Health
 
@@ -380,7 +416,6 @@ Custom metrics example:
 candle_candles_finalized_total
 rate(aggregator_ticks_total\[1m\])
 
-
 curl http://localhost:9464/metrics (optl)
 
 ------------------------------------------------------------------------
@@ -412,36 +447,39 @@ ORDER BY timestamp DESC LIMIT 100;
 
 # ⚙️ Tech Stack
 
-Technology       Purpose
+Technology Purpose
   ---------------- --------------------------------------
-- Java 25          Modern concurrency (Virtual Threads)
-- Spring Boot 4    Framework
-- Kafka            Streaming backbone
-- QuestDB          Time-series storage
-- Micrometer       Metrics
-- OpenTelemetry    Observability
-- Prometheus       Metrics storage
-- Grafana          Visualization
-- Log4j2 Async     High-performance logging
-- Docker Compose   Local orchestration
+
+- Java 25 Modern concurrency (Virtual Threads)
+- Spring Boot 4 Framework
+- Kafka Streaming backbone
+- QuestDB Time-series storage
+- Micrometer Metrics
+- OpenTelemetry Observability
+- Prometheus Metrics storage
+- Grafana Visualization
+- Log4j2 Async High-performance logging
+- Docker Compose Local orchestration
+- Zalando Logbook
 
 ------------------------------------------------------------------------
 
 # 🚀 How to Run
 
-1.  Start infrastructure: 
+1. Start infrastructure:
+
 ```bash
 docker compose up -d
 ```
 
-2.  Run application:
+2. Run application:
 
 ```bash
 mvn clean package 
 java -jar target/aggregator-service-0.0.1-SNAPSHOT.jar
 ```
 
-3.  Access:
+3. Access:
 
 - Actuator: http://localhost:9081/actuator\
 - Prometheus: http://localhost:9090\
@@ -452,14 +490,15 @@ java -jar target/aggregator-service-0.0.1-SNAPSHOT.jar
 
 # 🏗 Clean Separation of Concerns
 
-Layer            Responsibility
+Layer Responsibility
   ---------------- -----------------------
-- TickSource       Ingestion abstraction
-- TickProcessor    Business processing
-- CandleShard      Aggregation engine
-- CandleSink       Persistence
-- KafkaPublisher   Distribution
-- History API      Read side
+
+- TickSource Ingestion abstraction
+- TickProcessor Business processing
+- CandleShard Aggregation engine
+- CandleSink Persistence
+- KafkaPublisher Distribution
+- History API Read side
 
 Candle logic is fully decoupled from ingestion source.
 
@@ -469,46 +508,53 @@ Candle logic is fully decoupled from ingestion source.
 
 This system is:
 
--   Event-driven
--   Horizontally scalable
--   Lock-free per shard
--   Time-series optimized
--   Production observable
--   Cleanly separated between write and read models
+- Event-driven
+- Horizontally scalable
+- Lock-free per shard
+- Time-series optimized
+- Production observable
+- Cleanly separated between write and read models
 
 Designed to resemble real-world exchange-grade backend architecture.
 
 ------------------------------------------------------------------------
 
-
 # history-api-service
 
 A lightweight **read/query API** for candle data produced by `aggregator-service` and stored in **QuestDB**.  
-It exists to keep the write-heavy aggregation pipeline isolated from read-heavy API traffic, and to provide a clean interface for dashboards, UIs, and other services.
+It exists to keep the write-heavy aggregation pipeline isolated from read-heavy API traffic, and to provide a clean
+interface for dashboards, UIs, and other services.
 
 ---
 
 ## Why a separate service?
 
 ### 1) Workload isolation (writes vs reads)
+
 `aggregator-service` is optimized for:
+
 - high-throughput tick ingestion (Kafka consumers)
 - candle aggregation (in-memory)
 - fast writes to QuestDB (ILP)
 
 `history-api-service` is optimized for:
+
 - ad-hoc queries (filtering, paging, sorting)
 - REST/HTTP concerns (timeouts, validation)
 - API schema & documentation (Swagger/OpenAPI)
 
-Separating the services means a spike in API traffic **does not** slow down candle ingestion, and a spike in ticks **does not** degrade API latency.
+Separating the services means a spike in API traffic **does not** slow down candle ingestion, and a spike in ticks *
+*does not** degrade API latency.
 
 ### 2) Independent scaling
+
 You can scale them independently:
+
 - `aggregator-service`: scale by Kafka partitions / consumer concurrency and shard count
 - `history-api-service`: scale by HTTP load (replicas behind a load balancer)
 
 ### 3) Cleaner boundaries
+
 - Aggregator emits facts: *finalized candles*
 - History API serves facts: *query candles*
 
@@ -519,10 +565,11 @@ This boundary keeps the candle calculation logic decoupled from API concerns.
 ## What this service does
 
 Typical responsibilities:
+
 - Exposes REST endpoints to query candle history by:
-  - `symbol`
-  - `interval` (e.g., `1s`, `5s`, `1m`, `15m`, `1h`)
-  - time window (`from`, `to`)
+    - `symbol`
+    - `interval` (e.g., `1s`, `5s`, `1m`, `15m`, `1h`)
+    - time window (`from`, `to`)
 - Provides pagination/limits
 - Validates inputs and returns consistent error responses
 - Publishes OpenAPI docs via Swagger UI
@@ -619,6 +666,7 @@ OpenAPI JSON (commonly one of these depending on springdoc config):
 - `http://localhost:8082/api-docs.yaml`
 
 If Swagger does not load:
+
 1. Confirm `springdoc-openapi-starter-webmvc-ui` dependency exists.
 2. Confirm your app is actually running on `8082`.
 3. Check logs for a missing Jackson module (common when mixing Jackson versions).
@@ -628,6 +676,7 @@ If Swagger does not load:
 ## How to access QuestDB and verify data
 
 ### 1) QuestDB Web Console
+
 Open:
 
 - `http://localhost:9000`
@@ -648,6 +697,7 @@ LIMIT 50;
 ```
 
 ### 2) Postgres wire (optional)
+
 QuestDB supports Postgres wire protocol on `8812`.
 
 Example (psql):
@@ -666,12 +716,12 @@ If actuator is enabled, typical endpoints:
 - Health: `http://localhost:8082/actuator/health`
 - Metrics: `http://localhost:8082/actuator/metrics`
 
-
 ## Example query patterns (API)
 
 Exact routes depend on your controller design, but common patterns are:
 
 ### History API
+
 ```
 GET http://localhost:8082/api/v1/history/candles?symbol=ETH-USD&interval=1m&from=1772299670&to=1872299690&limit=100
 ```
@@ -680,9 +730,9 @@ GET http://localhost:8082/api/v1/history/candles?symbol=ETH-USD&interval=1m&from
 
 - **QuestDB**: reads scale well when queries are time-bounded and include limits.
 - **history-api-service**:
-  - is stateless → scale horizontally (multiple replicas)
-  - put a load balancer in front
-  - add caching for “latest” endpoints if needed
+    - is stateless → scale horizontally (multiple replicas)
+    - put a load balancer in front
+    - add caching for “latest” endpoints if needed
 - Keep `aggregator-service` isolated so ingestion is never blocked by slow queries.
 
 ---
@@ -690,6 +740,7 @@ GET http://localhost:8082/api/v1/history/candles?symbol=ETH-USD&interval=1m&from
 ## Operational notes / good production defaults
 
 Recommended:
+
 - Request timeouts and max rows (to prevent runaway queries)
 - Input validation (interval whitelist, symbol format, max time window)
 - Rate limiting / auth (if exposed publicly)
@@ -700,15 +751,18 @@ Recommended:
 ## Troubleshooting
 
 ### Swagger page loads but no endpoints appear
+
 - Ensure your controllers are picked up by component scanning.
 - Ensure you’re using the correct springdoc starter for Spring MVC (`webmvc`) or WebFlux (`webflux`).
 
 ### Queries are slow
+
 - Make sure queries include a time range.
 - Add a hard `LIMIT`.
 - Consider pre-aggregated tables/materialized views for large ranges.
 
 ### No data returned
+
 - Verify `candles` table contains rows in QuestDB:
   ```sql
   SELECT count() FROM candles;
@@ -724,7 +778,5 @@ Recommended:
 
 - **history-api-service**  
   Serves candle data over HTTP for dashboards/clients.
-
-
 
 #### Note: Additional unit test scenarios can be added, Due to time constraints, I covered the minimum.

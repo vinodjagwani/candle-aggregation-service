@@ -89,7 +89,8 @@ public final class QuestDbSink implements CandleSink {
     private void resetSender() {
         try {
             sender.close();
-        } catch (final Exception ignored) {
+        } catch (final Exception ex) {
+            log.warn("An error occurred while db sink closing", ex);
         }
         sender = Sender.fromConfig(ilpConfig);
     }
@@ -98,11 +99,13 @@ public final class QuestDbSink implements CandleSink {
     public void close() {
         try {
             flush();
-        } catch (final Exception ignored) {
+        } catch (final Exception ex) {
+            log.warn("An error occurred while db sink flush", ex);
         }
         try {
             sender.close();
-        } catch (final Exception ignored) {
+        } catch (final Exception ex) {
+            log.warn("An error occurred while db sink closing", ex);
         }
     }
 }

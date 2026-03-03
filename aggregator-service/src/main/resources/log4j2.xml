@@ -1,58 +1,59 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Configuration status="WARN" monitorInterval="30">
-    <Properties>
-        <Property name="SERVICE_NAME">aggregator-service</Property>
-        <Property name="LOG_DIR">.</Property>
+<Configuration monitorInterval="30" status="WARN">
+  <Appenders>
+    <Console name="Console" target="SYSTEM_OUT">
+      <PatternLayout pattern="${CONSOLE_PATTERN}"/>
+    </Console>
 
-        <Property name="CONSOLE_PATTERN">
-            %style{%d{ISO8601}}{red} %highlight{%-5level[${SERVICE_NAME},%X{traceId},%X{spanId}]} [%style{%t}{bright,blue}] %style{%logger{36}}{bright,yellow}: %msg%n%throwable
-        </Property>
+    <RollingFile
+      fileName="${LOG_DIR}/application.log"
+      filePattern="${LOG_DIR}/$${date:yyyy-MM}/application-%d{yyyy-MM-dd}.log.%i.gz"
+      name="RollingFile">
+      <DefaultRolloverStrategy max="30">
+        <Delete basePath="${LOG_DIR}" maxDepth="2">
+          <IfFileName glob="*/application-*.log.*.gz"/>
+          <IfLastModified age="15d"/>
+        </Delete>
+      </DefaultRolloverStrategy>
+      <PatternLayout pattern="${FILE_PATTERN}"/>
+      <Policies>
+        <SizeBasedTriggeringPolicy size="100MB"/>
+        <TimeBasedTriggeringPolicy/>
+      </Policies>
+    </RollingFile>
+  </Appenders>
 
-        <Property name="FILE_PATTERN">
-            %d{ISO8601} %-5level[${SERVICE_NAME},%X{traceId},%X{spanId}] [%t] %logger{36}: %msg%n%throwable
-        </Property>
-    </Properties>
+  <CustomLevels>
+    <CustomLevel intLevel="450" name="EVENT"/>
+  </CustomLevels>
 
-    <CustomLevels>
-        <CustomLevel name="EVENT" intLevel="450"/>
-    </CustomLevels>
+  <Loggers>
+    <Logger additivity="false" level="INFO" name="com.candle.aggregator">
+      <AppenderRef ref="Console"/>
+      <AppenderRef ref="RollingFile"/>
+    </Logger>
 
-    <Appenders>
-        <Console name="Console" target="SYSTEM_OUT">
-            <PatternLayout pattern="${CONSOLE_PATTERN}"/>
-        </Console>
+    <Logger level="TRACE" name="org.zalando.logbook"/>
+    <Logger level="WARN" name="org.apache.kafka"/>
+    <Logger level="INFO" name="org.springframework.kafka"/>
 
-        <RollingFile
-          name="RollingFile"
-          fileName="${LOG_DIR}/application.log"
-          filePattern="${LOG_DIR}/$${date:yyyy-MM}/application-%d{yyyy-MM-dd}.log.%i.gz">
-            <PatternLayout pattern="${FILE_PATTERN}"/>
-            <Policies>
-                <TimeBasedTriggeringPolicy/>
-                <SizeBasedTriggeringPolicy size="100MB"/>
-            </Policies>
-            <DefaultRolloverStrategy max="30">
-                <Delete basePath="${LOG_DIR}" maxDepth="2">
-                    <IfFileName glob="*/application-*.log.*.gz"/>
-                    <IfLastModified age="15d"/>
-                </Delete>
-            </DefaultRolloverStrategy>
-        </RollingFile>
-    </Appenders>
+    <Root level="INFO">
+      <AppenderRef ref="Console"/>
+      <AppenderRef ref="RollingFile"/>
+    </Root>
+  </Loggers>
 
-    <Loggers>
-        <Logger name="com.candle.aggregator" level="INFO" additivity="false">
-            <AppenderRef ref="Console"/>
-            <AppenderRef ref="RollingFile"/>
-        </Logger>
+  <Properties>
+    <Property name="SERVICE_NAME">aggregator-service</Property>
+    <Property name="LOG_DIR">.</Property>
 
-        <Logger name="org.zalando.logbook" level="TRACE"/>
-        <Logger name="org.apache.kafka" level="WARN"/>
-        <Logger name="org.springframework.kafka" level="INFO"/>
+    <Property name="CONSOLE_PATTERN">
+      %style{%d{ISO8601}}{red} %highlight{%-5level[${SERVICE_NAME},%X{traceId},%X{spanId}]} [%style{%t}{bright,blue}]
+      %style{%logger{36}}{bright,yellow}: %msg%n%throwable
+    </Property>
 
-        <Root level="INFO">
-            <AppenderRef ref="Console"/>
-            <AppenderRef ref="RollingFile"/>
-        </Root>
-    </Loggers>
+    <Property name="FILE_PATTERN">
+      %d{ISO8601} %-5level[${SERVICE_NAME},%X{traceId},%X{spanId}] [%t] %logger{36}: %msg%n%throwable
+    </Property>
+  </Properties>
 </Configuration>

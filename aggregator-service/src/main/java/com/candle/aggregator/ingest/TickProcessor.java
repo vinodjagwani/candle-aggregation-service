@@ -23,7 +23,6 @@ public final class TickProcessor {
     private final AggMetrics metrics;
     private final KafkaCandlePublisher publisher;
 
-
     private final LongAdder ticksSeen = new LongAdder();
     private final LongAdder candlesSeen = new LongAdder();
 
@@ -41,13 +40,13 @@ public final class TickProcessor {
         this.publisher = new KafkaCandlePublisher(kafka, props.kafka().candlesTopic());
     }
 
-    public void onTick(final BidAskEvent event) {
+    public void onTick(final int partition, final BidAskEvent event) {
         final Timer.Sample sample = metrics.startTickTimer();
         try {
             metrics.tickProcessed();
             ticksSeen.increment();
 
-            final ShardState shard = shardManager.bySymbol(event.symbol());
+            final ShardState shard = shardManager.byPartition(partition);
             final var finalized = shard.aggregator.onTick(event);
 
             if (!finalized.isEmpty()) {

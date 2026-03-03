@@ -16,7 +16,7 @@ public final class BusinessServiceException extends RuntimeException {
 
     final HttpStatus httpStatus;
 
-    final ErrorPrinter errorEnum;
+    final transient ErrorPrinter errorEnum;
 
     public BusinessServiceException(final ErrorPrinter errorEnum, final String message) {
         super(message);

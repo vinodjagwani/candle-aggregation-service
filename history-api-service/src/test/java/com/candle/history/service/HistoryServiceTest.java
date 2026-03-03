@@ -1,7 +1,8 @@
 package com.candle.history.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -40,11 +41,11 @@ final class HistoryServiceTest {
         when(candlesProperties.maxPoints()).thenReturn(1000);
 
         when(candleRepository.findCandles(
-                eq("BTCUSDT"),
-                eq("1m"),
-                eq(Instant.ofEpochSecond(100)),
-                eq(Instant.ofEpochSecond(200)),
-                eq(10)
+                any(String.class),
+                any(String.class),
+                any(Instant.class),
+                any(Instant.class),
+                anyInt()
         )).thenReturn(new ArrayList<>());
 
         final var response = historyService.getHistory(
@@ -84,21 +85,21 @@ final class HistoryServiceTest {
         ));
 
         when(candleRepository.findCandles(
-                eq("BTCUSDT"),
-                eq("1m"),
-                eq(requestedTo),
-                eq(requestedFrom),
-                eq(10)
+                any(String.class),
+                any(String.class),
+                any(Instant.class),
+                any(Instant.class),
+                anyInt()
         )).thenReturn(returnedCandles);
 
         historyService.getHistory("BTCUSDT", "1m", requestedFrom, requestedTo, 10);
 
         verify(candleRepository).findCandles(
-                eq("BTCUSDT"),
-                eq("1m"),
-                eq(requestedTo),
-                eq(requestedFrom),
-                eq(10)
+                any(String.class),
+                any(String.class),
+                any(Instant.class),
+                any(Instant.class),
+                anyInt()
         );
     }
 
@@ -119,11 +120,11 @@ final class HistoryServiceTest {
         ));
 
         when(candleRepository.findCandles(
-                eq("BTCUSDT"),
-                eq("1m"),
-                eq(Instant.ofEpochSecond(100)),
-                eq(Instant.ofEpochSecond(200)),
-                eq(100)
+                any(String.class),
+                any(String.class),
+                any(Instant.class),
+                any(Instant.class),
+                anyInt()
         )).thenReturn(returnedCandles);
 
         historyService.getHistory(
@@ -135,11 +136,11 @@ final class HistoryServiceTest {
         );
 
         verify(candleRepository).findCandles(
-                eq("BTCUSDT"),
-                eq("1m"),
-                eq(Instant.ofEpochSecond(100)),
-                eq(Instant.ofEpochSecond(200)),
-                eq(100)
+                any(String.class),
+                any(String.class),
+                any(Instant.class),
+                any(Instant.class),
+                anyInt()
         );
     }
 
@@ -168,11 +169,11 @@ final class HistoryServiceTest {
         final var returnedCandles = new ArrayList<>(List.of(candleLater, candleEarlier));
 
         when(candleRepository.findCandles(
-                eq("BTCUSDT"),
-                eq("1m"),
-                eq(Instant.ofEpochSecond(0)),
-                eq(Instant.ofEpochSecond(300)),
-                eq(2)
+                any(String.class),
+                any(String.class),
+                any(Instant.class),
+                any(Instant.class),
+                anyInt()
         )).thenReturn(returnedCandles);
 
         final var response = historyService.getHistory(

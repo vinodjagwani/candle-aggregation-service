@@ -11,11 +11,11 @@ exporters:
     metric_expiration: 5m
 
 processors:
-  batch: {}
+  batch: { }
 
 service:
   pipelines:
     metrics:
-      receivers: [otlp]
-      processors: [batch]
-      exporters: [prometheus]
+      receivers: [ otlp ]
+      processors: [ batch ]
+      exporters: [ prometheus ]

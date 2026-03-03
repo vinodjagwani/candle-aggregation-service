@@ -1,20 +1,24 @@
 package com.candle.aggregator.core;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import com.candle.aggregator.domain.BidAskEvent;
 import com.candle.aggregator.domain.Interval;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
-
 final class CandleShardTest {
+
+    private static BidAskEvent tick(final String symbol, final double mid, final long timestampMillis) {
+        return new BidAskEvent(symbol, mid - 0.1, mid + 0.1, timestampMillis);
+    }
 
     @Test
     @DisplayName("TestFinalizesOneSecondCandleUsingWatermark")
     void testFinalizesOneSecondCandleUsingWatermark() {
-        final Interval[] intervals = { new Interval("1s", 1) };
+        final Interval[] intervals = {new Interval("1s", 1)};
         final long allowedLatenessSec = 1;
         final int bucketCapacity = 16;
 
@@ -45,7 +49,7 @@ final class CandleShardTest {
     @Test
     @DisplayName("TestAcceptsLateTickWithinAllowedLatenessAndFinalizesWhenWatermarkPasses")
     void testAcceptsLateTickWithinAllowedLatenessAndFinalizesWhenWatermarkPasses() {
-        final Interval[] intervals = { new Interval("1s", 1) };
+        final Interval[] intervals = {new Interval("1s", 1)};
         final long allowedLatenessSec = 2;
         final int bucketCapacity = 16;
 
@@ -111,9 +115,5 @@ final class CandleShardTest {
         assertEquals(10.0, fiveSec.candle().low(), 1e-9);
         assertEquals(14.0, fiveSec.candle().close(), 1e-9);
         assertEquals(5L, fiveSec.candle().volume());
-    }
-
-    private static BidAskEvent tick(final String symbol, final double mid, final long timestampMillis) {
-        return new BidAskEvent(symbol, mid - 0.1, mid + 0.1, timestampMillis);
     }
 }

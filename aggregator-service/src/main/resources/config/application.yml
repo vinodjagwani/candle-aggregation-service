@@ -105,7 +105,7 @@ app:
 
   simulator:
     enabled: true
-    symbols: [BTC-USD, ETH-USD, SOL-USD]
+    symbols: [ BTC-USD, ETH-USD, SOL-USD ]
     ticks-per-second: 500
     base-price: 30000
     volatility: 1.0

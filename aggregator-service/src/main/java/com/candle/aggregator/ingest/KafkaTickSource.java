@@ -23,7 +23,9 @@ public final class KafkaTickSource implements TickSource {
     private final TickDlqPublisher dlq;
     private final AppProperties props;
     private final AggMetrics metrics;
+
     private final LongAdder decodeFailed = new LongAdder();
+
     private TickHandler handler;
     private volatile long lastLogMs = System.currentTimeMillis();
 
@@ -51,21 +53,22 @@ public final class KafkaTickSource implements TickSource {
     )
     public void onBatch(final List<ConsumerRecord<String, String>> records, final Acknowledgment ack) {
         final TickHandler h = handler;
-        if (h == null || records.isEmpty()) {
+        if (h == null || records == null || records.isEmpty()) {
             ack.acknowledge();
             return;
         }
 
-        records.stream().map(ConsumerRecord::value).forEach(raw -> {
+        records.forEach(rec -> {
+            final String raw = rec.value();
             final BidAskEvent event = decodeOrNull(raw);
             if (event == null) {
                 dlq.send(props.kafka().dlqTopic(), raw, "Bad tick json");
+                metrics.decodeFailed();
                 return;
             }
             try {
-                h.onTick(event);
+                h.onTick(rec.partition(), event);
             } catch (final Exception ex) {
-                metrics.decodeFailed();
                 dlq.send(props.kafka().dlqTopic(), raw, "Tick handler error: " + ex.getMessage());
                 metrics.dlqPublished();
                 log.error("Tick handler failed; sent to DLQ", ex);
@@ -78,12 +81,12 @@ public final class KafkaTickSource implements TickSource {
 
     private BidAskEvent decodeOrNull(final String json) {
         try {
-            final JsonNode n = mapper.readTree(json);
+            final JsonNode jsonNode = mapper.readTree(json);
 
-            final JsonNode sym = n.get("symbol");
-            final JsonNode bid = n.get("bid");
-            final JsonNode ask = n.get("ask");
-            final JsonNode ts = n.get("timestamp");
+            final JsonNode sym = jsonNode.get("symbol");
+            final JsonNode bid = jsonNode.get("bid");
+            final JsonNode ask = jsonNode.get("ask");
+            final JsonNode ts = jsonNode.get("timestamp");
 
             if (sym == null || bid == null || ask == null || ts == null) {
                 decodeFailed.increment();
@@ -103,6 +106,7 @@ public final class KafkaTickSource implements TickSource {
             return;
         }
         lastLogMs = nowMs;
+
         final long failed = decodeFailed.sumThenReset();
         if (failed > 0) {
             log.warn("decodeFailed/sec={}", failed);

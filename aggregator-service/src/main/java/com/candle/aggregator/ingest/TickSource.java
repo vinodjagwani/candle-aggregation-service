@@ -10,6 +10,6 @@ public interface TickSource {
     @FunctionalInterface
     interface TickHandler {
 
-        void onTick(BidAskEvent event);
+        void onTick(int partition, BidAskEvent event);
     }
 }

@@ -31,8 +31,8 @@ public final class ShardManager implements AutoCloseable {
         });
     }
 
-    public ShardState bySymbol(final String symbol) {
-        return shards[Math.floorMod(symbol.hashCode(), shards.length)];
+    public ShardState byPartition(final int partition) {
+        return shards[Math.floorMod(partition, shards.length)];
     }
 
     public ShardState[] all() {

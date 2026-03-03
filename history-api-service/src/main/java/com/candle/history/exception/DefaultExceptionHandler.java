@@ -66,14 +66,16 @@ public class DefaultExceptionHandler {
     @ExceptionHandler({ValidationException.class})
     public ResponseEntity<Object> handleException(final ValidationException ex) {
         log.error(EXCEPTION_OCCURRED_MSG, ex);
-        List<ErrorResponse.ErrorInfo> errorInfos = new ArrayList<>();
+        final List<ErrorResponse.ErrorInfo> errorInfos = new ArrayList<>();
         final Throwable throwable = NestedExceptionUtils.getRootCause(ex);
-        if (throwable instanceof BusinessServiceException) {
+        if (throwable instanceof BusinessServiceException bse) {
             return new ResponseEntity<>(
-                    getErrorResponse(((BusinessServiceException) throwable).getErrorEnum().toString(), errorInfos),
-                    ((BusinessServiceException) throwable).getHttpStatus());
+                    getErrorResponse(bse.getErrorEnum().toString(), errorInfos),
+                    bse.getHttpStatus());
         }
-        return new ResponseEntity<>(getErrorResponse(ex.getMessage(), errorInfos), HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>(
+                getErrorResponse(ex.getMessage(), errorInfos),
+                HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
