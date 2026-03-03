@@ -127,6 +127,207 @@ Kafka handles partition rebalancing automatically.
 
 ------------------------------------------------------------------------
 
+# 🧱 Internal Code Architecture & Class Responsibilities
+
+This section explains how the system is structured internally and how responsibilities are cleanly separated.
+
+## 📂 Configuration Layer (`config/`)
+
+### `AppProperties`
+- Centralized configuration using `@ConfigurationProperties`
+- Strongly typed immutable records
+- Validated with Jakarta Bean Validation
+- Fails fast on invalid configuration
+
+### `KafkaConfig`
+- Configures Kafka error handling strategy
+- Centralizes retry/backoff configuration
+
+## 🧠 Domain Layer (`domain/`)
+
+### `BidAskEvent`
+Represents a single tick event:
+- symbol
+- bid
+- ask
+- timestampMillis
+
+Helper:
+```java
+double mid()
+```
+
+### `Candle`
+Immutable OHLCV record:
+- timeSec
+- open
+- high
+- low
+- close
+- volume
+
+### `Interval`
+Encapsulates bucket alignment logic:
+
+```java
+long bucketStartSec(long unixSec)
+```
+
+Ensures consistent candle boundaries.
+
+## ⚙️ Core Aggregation Engine (`core/`)
+
+### `CandleAggregator`
+Sealed interface:
+
+```java
+List<Finalized> onTick(BidAskEvent event)
+```
+
+### `CandleShard`
+In-memory aggregation per shard.
+
+Responsibilities:
+- Maintain per-symbol buckets
+- Update multiple intervals per tick
+- Perform watermark-based finalization
+- Produce immutable candles
+
+Lock-free behavior is correct only when:
+- Each shard is accessed by a single thread
+- Kafka partition key = symbol
+
+### `RecentBuckets`
+Bounded rolling storage:
+- Prevents unbounded memory growth
+- Keeps only buckets needed within lateness window
+
+### `MutableCandle`
+Hot-path mutable accumulator:
+- open
+- high
+- low
+- close
+- volume
+
+Converted to immutable candle via:
+
+```java
+Candle freeze()
+```
+
+### `BatchFlusher`
+Flush policy engine:
+
+Flush when:
+- `pendingRows >= configuredRows`
+OR
+- `elapsedTime >= configuredDuration`
+
+### `ShardManager`
+Creates shards based on:
+
+```
+app.kafka.concurrency
+```
+
+Each shard contains:
+- CandleShard
+- QuestDbSink
+- Batch state
+
+### `ShardState`
+Encapsulates:
+- Aggregator
+- Sink
+- pendingRows
+- lastFlushNanos
+
+Keeps batching logic isolated per shard.
+
+## 🚚 Ingestion Layer (`ingest/`)
+
+### `TickSource`
+Abstraction for tick ingestion transport.
+
+Allows swapping Kafka with other sources.
+
+### `KafkaTickSource`
+Kafka batch consumer.
+
+Responsibilities:
+- Decode JSON → BidAskEvent
+- Send malformed messages to DLQ
+- Manual acknowledgment
+- At-least-once processing
+
+### `TickProcessor`
+Main business orchestrator.
+
+Per tick:
+1. Resolve shard
+2. Aggregate
+3. Finalize candles
+4. Write to QuestDB
+5. Publish to Kafka
+6. Flush if needed
+
+### `TickDlqPublisher`
+Standardized DLQ publishing.
+
+Envelope format:
+```json
+{
+  "error": "...",
+  "raw": "original payload"
+}
+```
+
+## 🗃 Persistence & Publishing (`sink/`)
+
+### `CandleSink`
+Persistence contract:
+
+```java
+void onCandle(Finalized candle)
+void flush()
+void close()
+```
+
+### `QuestDbSink`
+- Writes candles using ILP
+- Batched flush
+- Retry-once safety logic
+- Timestamp sanity validation
+- Metrics instrumentation
+
+### `KafkaCandlePublisher`
+Publishes finalized candles to Kafka topic.
+
+## 📊 Observability (`observation/`)
+
+### `AggMetrics`
+Centralized metrics collection.
+
+Counters:
+- ticks processed
+- decode failures
+- DLQ publishes
+- candles finalized per interval
+
+Timers:
+- tick processing latency
+- QuestDB write time
+- QuestDB flush time
+
+Exported via:
+- Micrometer
+- OpenTelemetry
+- Prometheus
+- Grafana
+
+------------------------------------------------------------------------
+
 # 🧪 Observability & Monitoring
 
 ## Spring Boot Actuator
